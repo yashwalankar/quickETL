@@ -1,0 +1,10 @@
+services:
+  questdb:
+    image: questdb/questdb:latest
+    container_name: questdb
+    ports:
+      - "9000:9000"
+      - "9009:9009"
+      - "8812:8812"
+    volumes:
+      - ./questdb_data:/root/.questdb/db
