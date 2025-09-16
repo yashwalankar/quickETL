@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timedelta
 import glob
 import uuid
-from utils.questdb_loader import QuestDBLoader
+from questdb_loader import QuestDBLoader
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
