@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:18
+    image: postgres:latest
     container_name: postgres_db
     environment:
       POSTGRES_USER: user
@@ -16,18 +16,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
   etl_core:
     build: ./app
     container_name: etl_core
-    command: python app.py  # Run your app
+    command: python app.py
     depends_on:
       postgres:
-         condition: service_healthy
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql+psycopg2://user:pass@postgres:5432/scheduler_db
       FLASK_ENV: development
     ports:
-        - "5001:5000"
+      - "5001:5000"
     volumes:
-        - ./app:/app
-        - ./logs:/app/logs
+      - ./app:/app
+      - ./logs:/app/logs
+
+volumes:
+  postgres_data:

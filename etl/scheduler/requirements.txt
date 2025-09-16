@@ -1,5 +1,0 @@
-requests
-numpy
-apscheduler
-sqlalchemy
-psycopg2-binary
