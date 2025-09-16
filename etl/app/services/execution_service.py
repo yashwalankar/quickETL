@@ -7,7 +7,7 @@ import traceback
 from datetime import datetime
 from models import db
 from models.jobs import Job
-from models.runs import JobRun
+from models.job_run import JobRun
 
 logger = logging.getLogger(__name__)
 

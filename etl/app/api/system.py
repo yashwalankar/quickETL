@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify
 import logging
 from models import db
 from models.jobs import Job
-from models.runs import JobRun
+from models.job_run import JobRun
 
 logger = logging.getLogger(__name__)
 system_bp = Blueprint('system', __name__)

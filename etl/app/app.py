@@ -62,7 +62,7 @@ def create_app():
     
     # Import models to ensure they're registered
     from models.jobs import Job
-    from models.runs import JobRun
+    from models.job_run import JobRun
     
     # Initialize scheduler service
     from services.scheduler_service import SchedulerService
