@@ -41,6 +41,7 @@ def download_stock_data(symbol, interval, period, auto_adjust=True,
         
         # Add symbol column
         data['Symbol'] = symbol
+        data = data.drop(columns=['Capital Gains','Dividends','Stock Splits']) 
         
         # Reset index to make datetime a column
         data.reset_index(inplace=True)
