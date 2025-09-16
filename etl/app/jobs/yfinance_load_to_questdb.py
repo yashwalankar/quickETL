@@ -13,6 +13,16 @@ logger = logging.getLogger(__name__)
 
 def find_latest_csv(data_dir='../yfdata/stocks', symbol_pattern='*'):
     """Find the most recent CSV file for today's date"""
+
+    if not os.path.exists(data_dir):
+        logger.error(f"Directory does not exist: {data_dir}")
+        return None
+
+    # pattern = os.path.join(data_dir, "*.csv")
+    # logger.info(f"Looking for files with pattern: {pattern}")
+
+    # files = glob.glob(pattern)
+    # logger.info(f"Files found: {files}")
     
     # Look for today's files first
     today = datetime.now().strftime('%Y%m%d')
