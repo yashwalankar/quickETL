@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETL Job Scheduler</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .status-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .status-card h3 {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .status-card .value {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #007AFF;
+        }
+        
+        .jobs-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .section-header h2 {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+        
+        .btn {
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            background: #0056CC;
+            transform: translateY(-1px);
+        }
+        
+        .btn-danger {
+            background: #FF3B30;
+        }
+        
+        .btn-danger:hover {
+            background: #D70015;
+        }
+        
+        .btn-success {
+            background: #34C759;
+        }
+        
+        .btn-success:hover {
+            background: #248A3D;
+        }
+        
+        .job-card {
+            border: 1px solid #e5e5e7;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            padding: 20px;
+            transition: all 0.2s;
+        }
+        
+        .job-card:hover {
+            border-color: #007AFF;
+            box-shadow: 0 2px 8px rgba(0,122,255,0.1);
+        }
+        
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+        
+        .job-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+        
+        .job-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status-enabled {
+            background: #D1F2EB;
+            color: #00695C;
+        }
+        
+        .status-disabled {
+            background: #FADBD8;
+            color: #C0392B;
+        }
+        
+        .job-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .job-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+        
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007AFF;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .timezone-control {
+            background: white;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        
+        .timezone-control label {
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .timezone-control select {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .timezone-control select:focus {
+            outline: none;
+            border-color: #007AFF;
+            box-shadow: 0 0 0 2px rgba(0,122,255,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Timezone Control -->
+        <div class="timezone-control">
+            <label for="timezoneSelect">🕐 Timezone:</label>
+            <select id="timezoneSelect">
+                <option value="UTC">UTC</option>
+                <option value="America/New_York">Eastern Time</option>
+                <option value="America/Chicago">Central Time</option>
+                <option value="America/Denver">Mountain Time</option>
+                <option value="America/Los_Angeles">Pacific Time</option>
+                <option value="Europe/London">London</option>
+                <option value="Europe/Paris">Paris</option>
+                <option value="Europe/Berlin">Berlin</option>
+                <option value="Asia/Tokyo">Tokyo</option>
+                <option value="Asia/Shanghai">Shanghai</option>
+                <option value="Asia/Kolkata">India</option>
+                <option value="Australia/Sydney">Sydney</option>
+            </select>
+        </div>
+        <div class="header">
+            <h1>ETL Job Scheduler</h1>
+            <p>Manage and monitor your scheduled ETL jobs</p>
+        </div>
+        
+        <div class="status-grid" id="statusGrid">
+            <div class="status-card">
+                <h3>Total Jobs</h3>
+                <div class="value" id="totalJobs">-</div>
+            </div>
+            <div class="status-card">
+                <h3>Enabled Jobs</h3>
+                <div class="value" id="enabledJobs">-</div>
+            </div>
+            <div class="status-card">
+                <h3>Running Jobs</h3>
+                <div class="value" id="runningJobs">-</div>
+            </div>
+            <div class="status-card">
+                <h3>Scheduler Status</h3>
+                <div class="value" id="schedulerStatus">-</div>
+            </div>
+        </div>
+        
+        <div class="jobs-section">
+            <div class="section-header">
+                <h2>Jobs</h2>
+                <button class="btn" onclick="showCreateJobModal()">Create Job</button>
+            </div>
+            
+            <div id="jobsList">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Create/Edit Job Modal -->
+    <div id="jobModal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Create New Job</h3>
+            <form id="jobForm">
+                <div class="form-group">
+                    <label for="jobName">Job Name</label>
+                    <input type="text" id="jobName" name="name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="jobDescription">Description</label>
+                    <textarea id="jobDescription" name="description"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="jobScriptPath">Script Path</label>
+                    <input type="text" id="jobScriptPath" name="script_path" required placeholder="jobs/my_script.py">
+                </div>
+                
+                <div class="form-group">
+                    <label for="jobCron">Cron Expression</label>
+                    <input type="text" id="jobCron" name="cron_expression" required placeholder="0 */15 * * * *">
+                    <small style="color: #666; font-size: 12px;">Format: second minute hour day month weekday</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="jobConfig">Configuration (JSON)</label>
+                    <textarea id="jobConfig" name="config" placeholder='{"api_url": "https://example.com/api", "timeout": 30}'></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="jobEnabled" name="enabled" checked>
+                        <label for="jobEnabled">Enabled</label>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                    <button type="button" class="btn" style="background: #666;" onclick="closeJobModal()">Cancel</button>
+                    <button type="submit" class="btn">Save Job</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let jobs = [];
+        let editingJobId = null;
+        let selectedTimezone = 'UTC';
+
+        // Timezone conversion functions
+        function formatDateTime(dateString, timezone = selectedTimezone) {
+            if (!dateString) return 'Never';
+            if (dateString === 'Not scheduled') return 'Not scheduled';
+            
+            try {
+                // Ensure the date string is treated as UTC
+                let utcDateString = dateString;
+                if (!dateString.endsWith('Z') && !dateString.includes('+')) {
+                    utcDateString = dateString + 'Z';
+                }
+                
+                const date = new Date(utcDateString);
+                if (isNaN(date.getTime())) return dateString;
+                
+                if (timezone === 'UTC') {
+                    return date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC');
+                } else {
+                    return date.toLocaleString('en-US', {
+                        timeZone: timezone,
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    }) + ` ${getTimezoneAbbreviation(timezone)}`;
+                }
+            } catch (e) {
+                return dateString;
+            }
+        }
+        
+        function getTimezoneAbbreviation(timezone) {
+            const abbrevMap = {
+                'UTC': 'UTC',
+                'America/New_York': 'ET',
+                'America/Chicago': 'CT',
+                'America/Denver': 'MT',
+                'America/Los_Angeles': 'PT',
+                'Europe/London': 'GMT',
+                'Europe/Paris': 'CET',
+                'Europe/Berlin': 'CET',
+                'Asia/Tokyo': 'JST',
+                'Asia/Shanghai': 'CST',
+                'Asia/Kolkata': 'IST',
+                'Australia/Sydney': 'AEDT'
+            };
+            return abbrevMap[timezone] || timezone.split('/')[1];
+        }
+        
+        function updateTimezoneDisplay() {
+            // Re-render jobs with new timezone
+            renderJobs();
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStatus();
+            loadJobs();
+            
+            // Initialize timezone selector
+            const timezoneSelect = document.getElementById('timezoneSelect');
+            
+            // Set default timezone (you can change this to your preferred default)
+            selectedTimezone = 'UTC';
+            timezoneSelect.value = selectedTimezone;
+            
+            // Handle timezone changes
+            timezoneSelect.addEventListener('change', function() {
+                selectedTimezone = this.value;
+                updateTimezoneDisplay();
+            });
+            
+            setInterval(() => {
+                loadStatus();
+                loadJobs();
+            }, 30000);
+        });
+
+        async function loadStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const status = await response.json();
+                document.getElementById('totalJobs').textContent = status.total_jobs;
+                document.getElementById('enabledJobs').textContent = status.enabled_jobs;
+                document.getElementById('runningJobs').textContent = status.running_jobs;
+                document.getElementById('schedulerStatus').textContent = status.scheduler_running ? 'Running' : 'Stopped';
+                document.getElementById('schedulerStatus').style.color = status.scheduler_running ? '#34C759' : '#FF3B30';
+            } catch (error) {
+                console.error('Failed to load status:', error);
+            }
+        }
+
+        async function loadJobs() {
+            try {
+                const response = await fetch('/api/jobs');
+                jobs = await response.json();
+                renderJobs();
+            } catch (error) {
+                console.error('Failed to load jobs:', error);
+                document.getElementById('jobsList').innerHTML = '<div class="empty-state">Failed to load jobs</div>';
+            }
+        }
+
+        function renderJobs() {
+            const jobsList = document.getElementById('jobsList');
+            if (jobs.length === 0) {
+                jobsList.innerHTML = '<div class="empty-state">No jobs found. Create your first job to get started!</div>';
+                return;
+            }
+            jobsList.innerHTML = jobs.map(job => `
+                <div class="job-card">
+                    <div class="job-header">
+                        <div class="job-title">${job.name}</div>
+                        <div class="job-status ${job.enabled ? 'status-enabled' : 'status-disabled'}">
+                            ${job.enabled ? 'Enabled' : 'Disabled'}
+                        </div>
+                    </div>
+                    ${job.description ? `<p style="margin-bottom: 12px; color: #666;">${job.description}</p>` : ''}
+                    <div class="job-meta">
+                        <div><strong>Script:</strong> ${job.script_path}</div>
+                        <div><strong>Schedule:</strong> ${job.cron_expression}</div>
+                        <div><strong>Last Run:</strong> ${formatDateTime(job.last_run_at)}</div>
+                        <div><strong>Next Run:</strong> ${formatDateTime(job.next_run_at)}</div>
+                    </div>
+                    <div class="job-actions">
+                        <button class="btn btn-success" onclick="runJobNow(${job.id})">Run Now</button>
+                        <button class="btn" onclick="editJob(${job.id})">Edit</button>
+                        <button class="btn" onclick="viewJobRuns(${job.id})">View Runs</button>
+                        <button class="btn btn-danger" onclick="deleteJob(${job.id}, '${job.name}')">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showCreateJobModal() {
+            editingJobId = null;
+            document.getElementById('modalTitle').textContent = 'Create New Job';
+            document.getElementById('jobForm').reset();
+            document.getElementById('jobEnabled').checked = true;
+            document.getElementById('jobModal').style.display = 'block';
+        }
+
+        function editJob(jobId) {
+            const job = jobs.find(j => j.id === jobId);
+            if (!job) return;
+            editingJobId = jobId;
+            document.getElementById('modalTitle').textContent = 'Edit Job';
+            document.getElementById('jobName').value = job.name;
+            document.getElementById('jobDescription').value = job.description || '';
+            document.getElementById('jobScriptPath').value = job.script_path;
+            document.getElementById('jobCron').value = job.cron_expression;
+            document.getElementById('jobConfig').value = JSON.stringify(job.config, null, 2);
+            document.getElementById('jobEnabled').checked = job.enabled;
+            document.getElementById('jobModal').style.display = 'block';
+        }
+
+        function closeJobModal() {
+            document.getElementById('jobModal').style.display = 'none';
+            editingJobId = null;
+        }
+
+        async function runJobNow(jobId) {
+            if (!confirm('Are you sure you want to run this job now?')) return;
+            try {
+                const response = await fetch(`/api/jobs/${jobId}/run`, { method: 'POST' });
+                if (response.ok) {
+                    alert('Job execution started successfully!');
+                    loadStatus();
+                } else {
+                    const error = await response.json();
+                    alert(`Failed to run job: ${error.error}`);
+                }
+            } catch (error) {
+                alert(`Failed to run job: ${error.message}`);
+            }
+        }
+
+        async function deleteJob(jobId, jobName) {
+            if (!confirm(`Are you sure you want to delete the job "${jobName}"? This action cannot be undone.`)) return;
+            try {
+                const response = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
+                if (response.ok) {
+                    alert('Job deleted successfully!');
+                    loadJobs();
+                    loadStatus();
+                } else {
+                    const error = await response.json();
+                    alert(`Failed to delete job: ${error.error}`);
+                }
+            } catch (error) {
+                alert(`Failed to delete job: ${error.message}`);
+            }
+        }
+
+        async function viewJobRuns(jobId) {
+            try {
+                const response = await fetch(`/api/jobs/${jobId}/runs`);
+                const runs = await response.json();
+                const job = jobs.find(j => j.id === jobId);
+                const jobName = job ? job.name : `Job ${jobId}`;
+                let content = `<h3>Run History for "${jobName}"</h3>`;
+                if (runs.length === 0) {
+                    content += '<p>No runs found for this job.</p>';
+                } else {
+                    content += '<div style="max-height: 400px; overflow-y: auto;">';
+                    runs.forEach(run => {
+                        const statusColor = run.status === 'success' ? '#34C759' : 
+                                          run.status === 'failed' ? '#FF3B30' : 
+                                          run.status === 'running' ? '#007AFF' : '#666';
+                        content += `
+                            <div style="border: 1px solid #ddd; border-radius: 6px; margin: 8px 0; padding: 12px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <span style="color: ${statusColor}; font-weight: 600;">${run.status.toUpperCase()}</span>
+                                    <span style="font-size: 0.9rem; color: #666;">${formatDateTime(run.started_at)}</span>
+                                </div>
+                                ${run.duration_seconds ? `<div style="font-size: 0.9rem; color: #666;">Duration: ${run.duration_seconds}s</div>` : ''}
+                                ${run.error_message ? `<div style="color: #FF3B30; font-size: 0.9rem; margin-top: 4px;">${run.error_message}</div>` : ''}
+                                ${run.output ? `<details style="margin-top: 8px;"><summary>Output</summary><pre style="background: #f5f5f5; padding: 8px; border-radius: 4px; font-size: 0.8rem; overflow-x: auto;">${run.output}</pre></details>` : ''}
+                            </div>`;
+                    });
+                    content += '</div>';
+                }
+                content += '<div style="text-align: center; margin-top: 16px;"><button class="btn" onclick="closeRunsModal()">Close</button></div>';
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                modal.style.display = 'block';
+                modal.innerHTML = `<div class="modal-content">${content}</div>`;
+                modal.id = 'runsModal';
+                document.body.appendChild(modal);
+            } catch (error) {
+                alert(`Failed to load job runs: ${error.message}`);
+            }
+        }
+
+        function closeRunsModal() {
+            const modal = document.getElementById('runsModal');
+            if (modal) modal.remove();
+        }
+
+        document.getElementById('jobForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const jobData = {
+                name: formData.get('name'),
+                description: formData.get('description'),
+                script_path: formData.get('script_path'),
+                cron_expression: formData.get('cron_expression'),
+                enabled: document.getElementById('jobEnabled').checked
+            };
+            const configText = formData.get('config');
+            if (configText) {
+                try {
+                    jobData.config = JSON.parse(configText);
+                } catch (error) {
+                    alert('Invalid JSON in configuration field');
+                    return;
+                }
+            } else {
+                jobData.config = {};
+            }
+            try {
+                const url = editingJobId ? `/api/jobs/${editingJobId}` : '/api/jobs';
+                const method = editingJobId ? 'PUT' : 'POST';
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(jobData)
+                });
+                if (response.ok) {
+                    alert(editingJobId ? 'Job updated successfully!' : 'Job created successfully!');
+                    closeJobModal();
+                    loadJobs();
+                    loadStatus();
+                } else {
+                    const error = await response.json();
+                    alert(`Failed to save job: ${error.error}`);
+                }
+            } catch (error) {
+                alert(`Failed to save job: ${error.message}`);
+            }
+        });
+
+        window.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
