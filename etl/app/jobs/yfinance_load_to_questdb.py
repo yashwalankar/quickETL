@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def find_latest_csv(data_dir='/app/yfdata/stocks', symbol_pattern='*'):
+def find_latest_csv(data_dir='../yfdata/stocks', symbol_pattern='*'):
     """Find the most recent CSV file for today's date"""
     
     # Look for today's files first
@@ -46,3 +46,6 @@ def find_latest_csv(data_dir='/app/yfdata/stocks', symbol_pattern='*'):
     
 def main():
     print(find_latest_csv())
+
+if __name__ == "__main__":
+    main()
