@@ -3,7 +3,6 @@ from datetime import datetime
 import logging
 from models import db
 from models.jobs import Job
-from models.runs import JobRun
 
 logger = logging.getLogger(__name__)
 jobs_bp = Blueprint('jobs', __name__)

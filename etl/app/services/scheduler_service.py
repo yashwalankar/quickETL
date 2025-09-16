@@ -5,7 +5,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from flask import current_app
 from models import db
-from models.job import Job
+from models.jobs import Job
 from services.execution_service import ExecutionService
 
 logger = logging.getLogger(__name__)

@@ -61,8 +61,8 @@ def create_app():
     db.init_app(app)
     
     # Import models to ensure they're registered
-    from models.job import Job
-    from models.job_run import JobRun
+    from models.jobs import Job
+    from models.runs import JobRun
     
     # Initialize scheduler service
     from services.scheduler_service import SchedulerService

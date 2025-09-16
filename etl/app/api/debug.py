@@ -1,7 +1,6 @@
 from flask import Blueprint, jsonify
 import logging
-from models import db
-from models.job import Job
+from models.jobs import Job
 
 logger = logging.getLogger(__name__)
 debug_bp = Blueprint('debug', __name__)
