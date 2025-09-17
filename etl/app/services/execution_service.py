@@ -71,6 +71,13 @@ class ExecutionService:
                 
                 # Update job's last run time
                 job.last_run_at = start_time
+                if hasattr(app, 'scheduler_service') and job.enabled:
+                    try:
+                        scheduled_job = app.scheduler_service.scheduler.get_job(f"job_{job.id}")
+                        if scheduled_job and scheduled_job.next_run_time:
+                            job.next_run_at = scheduled_job.next_run_time.replace(tzinfo=None)
+                    except Exception as e:
+                            logger.warning(f"Failed to update next_run_at: {e}")
                 
             except Exception as e:
                 end_time = datetime.utcnow()
