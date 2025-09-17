@@ -36,8 +36,8 @@ def refresh_all_schedules():
         logger.error(f"Failed to refresh schedules: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@debug_bp.route('/job-status', methods=['GET'])
-def get_debug_job_status():
+@debug_bp.route('/compare-db-vs-scheduler', methods=['GET'])
+def compare_db_vs_scheduler_jobs():
     """Debug endpoint to show detailed job status"""
     try:
         jobs = Job.query.all()
@@ -70,4 +70,45 @@ def get_debug_job_status():
         
     except Exception as e:
         logger.error(f"Failed to get debug status: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@debug_bp.route('/jobs-in-scheduler', methods=['GET'])
+def get_jobs_in_scheduler():
+    """Get all jobs currently in the APScheduler instance"""
+    try:
+        if not scheduler_service:
+            return jsonify({'error': 'Scheduler service not available'}), 500
+        
+        # Get all jobs from APScheduler
+        scheduled_jobs = scheduler_service.scheduler.get_jobs()
+        
+        job_list = []
+        for job in scheduled_jobs:
+            job_info = {
+                'id': job.id,
+                'name': job.name,
+                'func': f"{job.func.__module__}.{job.func.__name__}" if job.func else None,
+                'trigger': str(job.trigger),
+                'trigger_type': type(job.trigger).__name__,
+                'next_run_time': job.next_run_time.isoformat() if job.next_run_time else None,
+                'pending': job.pending,
+                'coalesce': job.coalesce,
+                'max_instances': job.max_instances,
+                'misfire_grace_time': job.misfire_grace_time,
+                'args': list(job.args) if job.args else [],
+                'kwargs': dict(job.kwargs) if job.kwargs else {}
+            }
+            job_list.append(job_info)
+        
+        # Sort by next run time
+        job_list.sort(key=lambda x: x['next_run_time'] or '9999-12-31')
+        
+        return jsonify({
+            'scheduler_running': scheduler_service.is_running,
+            'total_jobs': len(job_list),
+            'jobs': job_list
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to get scheduler jobs: {str(e)}")
         return jsonify({'error': str(e)}), 500

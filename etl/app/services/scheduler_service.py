@@ -50,7 +50,7 @@ class SchedulerService:
             self.scheduler.add_job(
                 func=ExecutionService.execute_job,
                 trigger=CronTrigger.from_crontab(job.cron_expression),
-                args=[self.app, job.id],
+                args=[self.app, job.id, self.scheduler],
                 id=f"job_{job.id}",
                 name=job.name,
                 replace_existing=True
@@ -83,7 +83,7 @@ class SchedulerService:
             unique_id = f"manual_job_{job_id}_{datetime.now().timestamp()}"
             self.scheduler.add_job(
                 func=ExecutionService.execute_job,
-                args=[self.app, job_id],
+                args=[self.app, job_id, self.scheduler],
                 id=unique_id,
                 name=f"Manual run: {job_name}"
             )
