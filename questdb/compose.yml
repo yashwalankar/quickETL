@@ -7,4 +7,4 @@ services:
       - "9009:9009"
       - "8812:8812"
     volumes:
-      - ./questdb_data:/root/.questdb/db
+      - "/mnt/ssd/questdb_data:/root/.questdb/db"

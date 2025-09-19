@@ -1,5 +1,5 @@
 -- Main OHLCV table
-   CREATE TABLE ohlcv_stocks (
+   CREATE TABLE ohlcv_yf (
        datetime TIMESTAMP,
        symbol SYMBOL CAPACITY 512 CACHE,
        open DOUBLE,
@@ -14,6 +14,8 @@
        source_file STRING
    ) TIMESTAMP(datetime) PARTITION BY DAY WAL 
    DEDUP UPSERT KEYS(datetime, symbol);
+
+   ALTER TABLE ohlcv_yf ALTER COLUMN symbol ADD INDEX;
 
    -- Load summary table
    CREATE TABLE load_summary (
