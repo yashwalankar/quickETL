@@ -49,7 +49,7 @@ def main():
     job_id = os.getenv('JOB_ID', str(uuid.uuid4())[:8])
 
     questdb_host = os.getenv('QUESTDB_URL','questdb')
-    questdb_port = os.getenv('QUESTDB_PORT',9999)
+    questdb_port = os.getenv('QUESTDB_PORT',9000)
 
 
     logger.info(f"Starting job {job_name} (ID: {job_id}) with config: {job_config}")

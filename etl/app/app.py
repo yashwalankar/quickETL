@@ -23,7 +23,7 @@ class Config:
     DEBUG = os.getenv('FLASK_DEBUG', 'true').lower() == 'true'
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
     QUESTDB_URL = os.getenv('QUESTDB_URL','questdb')
-    QUESTDB_PORT = os.getenv('QUESTDB_PORT', 9999)
+    QUESTDB_PORT = os.getenv('QUESTDB_PORT', 9000)
 
 # =============================================================================
 # LOGGING SETUP

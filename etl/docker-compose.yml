@@ -28,7 +28,7 @@ services:
       DATABASE_URL: postgresql+psycopg2://user:pass@postgres:5432/scheduler_db
       FLASK_ENV: development
       QUESTDB_URL: 192.168.8.123
-      QUESTDB_PORT: 9999
+      QUESTDB_PORT: 9000
     ports:
       - "5001:5000"
     volumes:
