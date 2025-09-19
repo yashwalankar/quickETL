@@ -34,6 +34,6 @@ services:
     volumes:
       - ./app:/app
       - ./logs:/app/logs
-      - /mnt/ssd/etldownloaded:/app/yfdata
+      - /mnt/ssd/etldownloaded/yfdata:/app/yfdata
 volumes:
   postgres_data:
