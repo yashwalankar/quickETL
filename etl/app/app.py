@@ -22,6 +22,8 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key')
     DEBUG = os.getenv('FLASK_DEBUG', 'true').lower() == 'true'
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+    QUESTDB_URL = os.getenv('QUESTDB_URL','questdb')
+    QUESTDB_PORT = os.getenv('QUESTDB_PORT', 9999)
 
 # =============================================================================
 # LOGGING SETUP
@@ -53,6 +55,8 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = Config.DATABASE_URL
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = Config.SQLALCHEMY_TRACK_MODIFICATIONS
     app.config['SECRET_KEY'] = Config.SECRET_KEY
+    app.config['QUESTDB_URL'] = Config.QUESTDB_URL
+    app.config['QUESTDB_PORT'] = Config.QUESTDB_PORT
     
     CORS(app)
     

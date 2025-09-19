@@ -1,61 +1,83 @@
 import os
 import json
 import logging
+import time
 from datetime import datetime, timedelta
 import glob
 import uuid
+import pandas as pd
 from questdb_loader import QuestDBLoader
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-def find_latest_csv(data_dir='../yfdata/stocks', symbol_pattern='*'):
-    """Find the most recent CSV file for today's date"""
-
+""" 
+Find csv files from a directory based on certain pattern
+symbol_pattern}-yfinance-*-*_*.csv
+"""
+def find_csv(data_dir='/app/yfdata/stocks', symbol_pattern='*',latest = True):
     if not os.path.exists(data_dir):
         logger.error(f"Directory does not exist: {data_dir}")
-        return None
+        return []
 
-    # pattern = os.path.join(data_dir, "*.csv")
-    # logger.info(f"Looking for files with pattern: {pattern}")
-
-    # files = glob.glob(pattern)
-    # logger.info(f"Files found: {files}")
-    
-    # Look for today's files first
     today = datetime.now().strftime('%Y%m%d')
-    pattern = f"{data_dir}/{symbol_pattern}-yfinance-*-{today}_*.csv"
-    
+    pattern = f"{data_dir}/{symbol_pattern}-yfinance-*-*_*.csv"
+
     files = glob.glob(pattern)
     
     if not files:
-        # Fall back to yesterday's files if today's not found
-        yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y%m%d')
-        pattern = f"{data_dir}/{symbol_pattern}-yfinance-*-{yesterday}_*.csv"
-        files = glob.glob(pattern)
-    
-    if not files:
-        # Look for any recent files in the last 7 days
-        for days_back in range(2, 8):
-            date_str = (datetime.now() - timedelta(days=days_back)).strftime('%Y%m%d')
-            pattern = f"{data_dir}/{symbol_pattern}-yfinance-*-{date_str}_*.csv"
-            files = glob.glob(pattern)
-            if files:
-                break
-    
-    if files:
-        # Return the most recent file
+        print(f"No files found match pattern {pattern} for {today}")
+        logger.error("No csv files found")
+        return []
+
+    if latest:
         latest_file = max(files, key=os.path.getmtime)
         logger.info(f"Found latest CSV file: {latest_file}")
-        return latest_file
+        return [latest_file]
     else:
-        logger.error(f"No CSV files found in {data_dir}")
-        return None
-    
+        return files 
+
+
 def main():
-    print(find_latest_csv())
+
+    ## Getting Config 
+    # From ENV Variables 
+
+    job_config = json.loads(os.getenv('JOB_CONFIG', '{}'))
+    job_name = os.getenv('JOB_NAME', 'questdb_loader')
+    job_id = os.getenv('JOB_ID', str(uuid.uuid4())[:8])
+
+    questdb_host = os.getenv('QUESTDB_URL','questdb')
+    questdb_port = os.getenv('QUESTDB_PORT',9999)
+
+
+    logger.info(f"Starting job {job_name} (ID: {job_id}) with config: {job_config}")
+
+    # parse job config if provided
+    data_dir = job_config.get('data_dir', '/app/yfdata/stocks')
+    symbol_pattern = job_config.get('symbol_pattern', '*')  # or specific symbol like 'SPY'
+    table_name = job_config.get('table_name', 'ohlcv_stocks')
+    only_latest_csv = job_config.get('only_latest_csv', True)
+
+    #Re-write variables if passed through job config  
+    questdb_host = job_config.get('questdb_host', questdb_host)
+    questdb_port = job_config.get('questdb_port', questdb_port)
+
+    ## Initialize QuestDB 
+    logger.info(f"Connecting to QuestDB at {questdb_host}:{questdb_port}")
+    loader = QuestDBLoader(questdb_host, questdb_port)
+
+    ## Find CSV files to load 
+    files = find_csv(latest=only_latest_csv)
+    
+    logger.info(f"Found csv files: {files}")
+    print(files)
+
+    ## Load CSV to QuestDB
+    for file in files:
+        loader.load_csv_to_questdb(file, 'ohlcv_yf')
+    
 
 if __name__ == "__main__":
     main()

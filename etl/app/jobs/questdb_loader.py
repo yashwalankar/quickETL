@@ -28,10 +28,10 @@ class QuestDBLoader:
             return False
     
     def get_existing_records(self, symbol, start_date, end_date):
-        """Get existing records for the date range to handle duplicates"""
+        """Get existing records for the date range and symbol from ohlcv_yf"""
         query = f"""
         SELECT datetime, symbol, insert_count, first_inserted 
-        FROM ohlcv_stocks 
+        FROM ohlcv_yf 
         WHERE symbol = '{symbol}' 
         AND datetime >= '{start_date}' 
         AND datetime <= '{end_date}'
@@ -44,7 +44,7 @@ class QuestDBLoader:
                 if result.get('dataset'):
                     existing = {}
                     for row in result['dataset']:
-                        key = (row[0], row[1])  # (datetime, symbol)
+                        key = (pd.to_datetime(row[0]), row[1]) # (datetime, symbol)
                         existing[key] = {
                             'count': row[2], 
                             'first_inserted': row[3]
@@ -55,7 +55,7 @@ class QuestDBLoader:
             logger.error(f"Error checking existing records: {e}")
             return {}
     
-    def load_csv_to_questdb(self, csv_file, table_name='ohlcv_stocks'):
+    def load_csv_to_questdb(self, csv_file, table_name):
         """Load CSV data to QuestDB with upsert logic and insert counting"""
         
         if not os.path.exists(csv_file):
@@ -72,11 +72,11 @@ class QuestDBLoader:
                 return True, 0, 0, 0
             
             # Validate required columns
-            required_cols = ['Datetime', 'Symbol', 'Open', 'High', 'Low', 'Close', 'Volume']
-            missing_cols = [col for col in required_cols if col not in df.columns]
-            if missing_cols:
-                logger.error(f"Missing columns in CSV: {missing_cols}")
-                return False, 0, 0, 0
+            # required_cols = ['Datetime', 'Symbol', 'Open', 'High', 'Low', 'Close', 'Volume']
+            # missing_cols = [col for col in required_cols if col not in df.columns]
+            # if missing_cols:
+            #     logger.error(f"Missing columns in CSV: {missing_cols}")
+            #     return False, 0, 0, 0
             
             # Clean and prepare data
             df['Datetime'] = pd.to_datetime(df['Datetime'])
@@ -109,12 +109,12 @@ class QuestDBLoader:
                     for _, row in df.iterrows():
                         datetime_val = row['Datetime']
                         symbol_val = row['Symbol']
-                        key = (datetime_val.strftime('%Y-%m-%dT%H:%M:%S.%fZ'), symbol_val)
+                        key = (datetime_val, symbol_val)
                         
                         # Determine if this is new or update
                         if key in existing_records:
                             insert_count = existing_records[key]['count'] + 1
-                            first_inserted = existing_records[key]['first_inserted']
+                            first_inserted = pd.to_datetime(existing_records[key]['first_inserted'])
                             records_updated += 1
                         else:
                             insert_count = 1
