@@ -4,9 +4,50 @@ import pandas as pd
 import requests
 from datetime import datetime
 import uuid
+from dataclasses import dataclass
+from typing import Optional
 from questdb.ingress import Sender, IngressError
 
 logger = logging.getLogger(__name__)
+
+@dataclass
+class LoadToQuestResponse:
+    """Response object for QuestDB load operations"""
+    success: bool
+    records_processed: int
+    records_new: int
+    records_updated: int
+    table_name: str
+    symbol: Optional[str] = None
+    load_batch_id: Optional[str] = None
+    source_file: Optional[str] = None
+    error_message: Optional[str] = None
+    date_range_start: Optional[datetime] = None
+    date_range_end: Optional[datetime] = None
+    
+    @property
+    def total_records(self) -> int:
+        """Total records processed"""
+        return self.records_processed
+    
+    @property
+    def has_updates(self) -> bool:
+        """Check if any records were updated"""
+        return self.records_updated > 0
+    
+    @property
+    def has_new_records(self) -> bool:
+        """Check if any new records were added"""
+        return self.records_new > 0
+    
+    def __str__(self) -> str:
+        if self.success:
+            return (f"LoadToQuestResponse(success=True, table='{self.table_name}', "
+                   f"symbol='{self.symbol}', processed={self.records_processed}, "
+                   f"new={self.records_new}, updated={self.records_updated})")
+        else:
+            return (f"LoadToQuestResponse(success=False, table='{self.table_name}', "
+                   f"error='{self.error_message}')")
 
 class QuestDBLoader:
     """
@@ -27,11 +68,11 @@ class QuestDBLoader:
             logger.error(f"Cannot connect to QuestDB: {e}")
             return False
     
-    def get_existing_records(self, symbol, start_date, end_date):
-        """Get existing records for the date range and symbol from ohlcv_yf"""
+    def get_existing_records(self, symbol, start_date, end_date, table_name='ohlcv_yf'):
+        """Get existing records for the date range and symbol from specified table"""
         query = f"""
         SELECT datetime, symbol, insert_count, first_inserted 
-        FROM ohlcv_yf 
+        FROM {table_name} 
         WHERE symbol = '{symbol}' 
         AND datetime >= '{start_date}' 
         AND datetime <= '{end_date}'
@@ -55,12 +96,23 @@ class QuestDBLoader:
             logger.error(f"Error checking existing records: {e}")
             return {}
     
-    def load_csv_to_questdb(self, csv_file, table_name):
+    def load_csv_to_questdb(self, csv_file, table_name='ohlcv_yf') -> LoadToQuestResponse:
         """Load CSV data to QuestDB with upsert logic and insert counting"""
         
+        # Initialize response object with default values
+        response = LoadToQuestResponse(
+            success=False,
+            records_processed=0,
+            records_new=0,
+            records_updated=0,
+            table_name=table_name,
+            source_file=os.path.basename(csv_file) if csv_file else None
+        )
+        
         if not os.path.exists(csv_file):
-            logger.error(f"CSV file not found: {csv_file}")
-            return False, 0, 0, 0
+            response.error_message = f"CSV file not found: {csv_file}"
+            logger.error(response.error_message)
+            return response
             
         try:
             # Read CSV data
@@ -68,33 +120,32 @@ class QuestDBLoader:
             df = pd.read_csv(csv_file)
             
             if df.empty:
+                response.success = True  # Empty file is not an error
+                response.error_message = "CSV file is empty"
                 logger.warning(f"CSV file is empty: {csv_file}")
-                return True, 0, 0, 0
-            
-            # Validate required columns
-            # required_cols = ['Datetime', 'Symbol', 'Open', 'High', 'Low', 'Close', 'Volume']
-            # missing_cols = [col for col in required_cols if col not in df.columns]
-            # if missing_cols:
-            #     logger.error(f"Missing columns in CSV: {missing_cols}")
-            #     return False, 0, 0, 0
+                return response
             
             # Clean and prepare data
             df['Datetime'] = pd.to_datetime(df['Datetime'])
             symbol = df['Symbol'].iloc[0]
+            response.symbol = symbol
             
             # Get date range for checking existing records
             start_date = df['Datetime'].min()
             end_date = df['Datetime'].max()
+            response.date_range_start = start_date
+            response.date_range_end = end_date
             
-            logger.info(f"Processing {len(df)} records for {symbol}")
+            logger.info(f"Processing {len(df)} records for {symbol} into table '{table_name}'")
             logger.info(f"Date range: {start_date} to {end_date}")
             
-            # Check existing records
-            existing_records = self.get_existing_records(symbol, start_date, end_date)
+            # Check existing records in the specified table
+            existing_records = self.get_existing_records(symbol, start_date, end_date, table_name)
             logger.info(f"Found {len(existing_records)} existing records in date range")
             
             # Generate batch info
             load_batch_id = f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
+            response.load_batch_id = load_batch_id
             source_file = os.path.basename(csv_file)
             
             # Counters
@@ -121,7 +172,7 @@ class QuestDBLoader:
                             first_inserted = datetime.now()
                             records_new += 1
                         
-                        # Send row to QuestDB
+                        # Send row to QuestDB with configurable table name
                         sender.row(
                             table_name,
                             symbols={'symbol': symbol_val},
@@ -145,25 +196,33 @@ class QuestDBLoader:
                     # Flush all data
                     sender.flush()
                     
-                logger.info(f"Successfully loaded {records_processed} records")
+                # Update response with success values
+                response.success = True
+                response.records_processed = records_processed
+                response.records_new = records_new
+                response.records_updated = records_updated
+                    
+                logger.info(f"Successfully loaded {records_processed} records to table '{table_name}'")
                 logger.info(f"New records: {records_new}, Updated records: {records_updated}")
                 
                 # Log load summary
                 self.log_load_summary(load_batch_id, symbol, records_processed, 
-                                    records_new, records_updated, source_file, "SUCCESS")
+                                    records_new, records_updated, source_file, "SUCCESS", table_name)
                 
-                return True, records_processed, records_new, records_updated
+                return response
                 
             except IngressError as e:
-                logger.error(f"QuestDB ingress error: {e}")
-                self.log_load_summary(load_batch_id, symbol, 0, 0, 0, source_file, "FAILED")
-                return False, 0, 0, 0
+                response.error_message = f"QuestDB ingress error: {str(e)}"
+                logger.error(response.error_message)
+                self.log_load_summary(load_batch_id, symbol, 0, 0, 0, source_file, "FAILED", table_name)
+                return response
                 
         except Exception as e:
-            logger.error(f"Error loading CSV to QuestDB: {e}")
-            return False, 0, 0, 0
+            response.error_message = f"Error loading CSV to QuestDB: {str(e)}"
+            logger.error(response.error_message)
+            return response
     
-    def log_load_summary(self, load_id, symbol, records_processed, records_new, records_updated, source_file, status):
+    def log_load_summary(self, load_id, symbol, records_processed, records_new, records_updated, source_file, status, target_table):
         """Log summary of the load operation"""
         try:
             with Sender('http', self.host, self.port) as sender:
@@ -176,6 +235,7 @@ class QuestDBLoader:
                         'records_new': records_new,
                         'records_updated': records_updated,
                         'source_file': source_file,
+                        'target_table': target_table,
                         'job_status': status
                     },
                     at=datetime.now()
@@ -184,7 +244,7 @@ class QuestDBLoader:
         except Exception as e:
             logger.warning(f"Could not log load summary: {e}")
     
-    def get_table_stats(self, table_name='ohlcv_stocks'):
+    def get_table_stats(self, table_name):
         """Get statistics about the table data"""
         try:
             query = f"""
@@ -210,16 +270,19 @@ class QuestDBLoader:
             logger.error(f"Error getting table stats: {e}")
             return []
     
-    def get_load_history(self, limit=10):
-        """Get recent load history"""
+    def get_load_history(self, limit=10, table_name=None):
+        """Get recent load history, optionally filtered by target table"""
         try:
-            query = f"""
+            base_query = """
             SELECT load_id, symbol, load_timestamp, records_processed, 
-                   records_new, records_updated, source_file, job_status
+                   records_new, records_updated, source_file, target_table, job_status
             FROM load_summary 
-            ORDER BY load_timestamp DESC 
-            LIMIT {limit}
             """
+            
+            if table_name:
+                query = f"{base_query} WHERE target_table = '{table_name}' ORDER BY load_timestamp DESC LIMIT {limit}"
+            else:
+                query = f"{base_query} ORDER BY load_timestamp DESC LIMIT {limit}"
             
             response = requests.get(self.http_url, params={'query': query})
             if response.status_code == 200:
@@ -231,4 +294,3 @@ class QuestDBLoader:
         except Exception as e:
             logger.error(f"Error getting load history: {e}")
             return []
-    
