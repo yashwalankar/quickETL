@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 Find csv files from a directory based on certain pattern
 symbol_pattern}-yfinance-*-*_*.csv
 """
-def find_csv(data_dir='/app/yfdata/stocks', symbol_pattern='*',latest = True):
+def find_csv(data_dir='/app/data/stocks', symbol_pattern='*',latest = True):
     if not os.path.exists(data_dir):
         logger.error(f"Directory does not exist: {data_dir}")
         return []
@@ -55,7 +55,7 @@ def main():
     logger.info(f"Starting job {job_name} (ID: {job_id}) with config: {job_config}")
 
     # parse job config if provided
-    data_dir = job_config.get('data_dir', '/app/yfdata/stocks')
+    data_dir = job_config.get('data_dir', '/app/data/stocks')
     symbol_pattern = job_config.get('symbol_pattern', '*')  # or specific symbol like 'SPY'
     table_name = job_config.get('table_name', 'ohlcv_stocks')
     only_latest_csv = job_config.get('only_latest_csv', True)
