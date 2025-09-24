@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 Find csv files from a directory based on certain pattern
 symbol_pattern}-yfinance-*-*_*.csv
 """
-def find_csv(data_dir='/app/data/stocks', symbol_pattern='*',latest = True):
+def find_csv(data_dir, symbol_pattern='*',latest = True):
     if not os.path.exists(data_dir):
         logger.error(f"Directory does not exist: {data_dir}")
         return []
@@ -69,7 +69,7 @@ def main():
     logger.info(f"Starting job {job_name} (ID: {job_id}) with config: {job_config}")
 
     # parse job config if provided
-    data_dir = job_config.get('data_dir', '/app/data')
+    data_dir = job_config.get('data_dir', '/app/data/stocks')
     symbol_pattern = job_config.get('symbol_pattern', '*')  # or specific symbol like 'SPY'
     table_name = job_config.get('table_name', 'NotDefined')
     only_latest_csv = job_config.get('only_latest_csv', True)
@@ -96,7 +96,7 @@ def main():
     loader = QuestDBLoader(questdb_host, questdb_port)
 
     ## Find CSV files to load 
-    files = find_csv(latest=only_latest_csv)
+    files = find_csv(data_dir=data_dir,latest=only_latest_csv)
     
     logger.info(f"Found csv files: {files}")
     print(files)
