@@ -55,7 +55,7 @@ def main():
     logger.info(f"Starting job {job_name} (ID: {job_id}) with config: {job_config}")
 
     # parse job config if provided
-    data_dir = job_config.get('data_dir', '/app/data/stocks')
+    data_dir = job_config.get('data_dir', '/app/data')
     symbol_pattern = job_config.get('symbol_pattern', '*')  # or specific symbol like 'SPY'
     table_name = job_config.get('table_name', 'ohlcv_stocks')
     only_latest_csv = job_config.get('only_latest_csv', True)
@@ -76,8 +76,20 @@ def main():
 
     ## Load CSV to QuestDB
     for file in files:
-        loader.load_csv_to_questdb(file, 'ohlcv_yf')
+        load_response =loader.load_csv_to_questdb(file, table_name)
+        logger.info(load_response)
     
+    load_history = loader.get_load_history(limit = len(files), table_name=table_name)
+
+    if not load_history:
+        logger.warning("Load history not updated after load")
+    else:
+        logger.info("Load history updated")
+        for ld in load_history:
+            logger.info(ld)
+            print(ld)
+
+
 
 if __name__ == "__main__":
     main()

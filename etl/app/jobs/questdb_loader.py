@@ -54,7 +54,7 @@ class QuestDBLoader:
     QuestDB loader class for handling OHLCV data with duplicate counting
     """
     
-    def __init__(self, host='localhost', port=9000):
+    def __init__(self, host, port):
         self.host = host
         self.port = port
         self.http_url = f"http://{host}:{port}/exec"
@@ -68,7 +68,7 @@ class QuestDBLoader:
             logger.error(f"Cannot connect to QuestDB: {e}")
             return False
     
-    def get_existing_records(self, symbol, start_date, end_date, table_name='ohlcv_yf'):
+    def _get_existing_records(self, symbol, start_date, end_date, table_name):
         """Get existing records for the date range and symbol from specified table"""
         query = f"""
         SELECT datetime, symbol, insert_count, first_inserted 
@@ -96,7 +96,7 @@ class QuestDBLoader:
             logger.error(f"Error checking existing records: {e}")
             return {}
     
-    def load_csv_to_questdb(self, csv_file, table_name='ohlcv_yf') -> LoadToQuestResponse:
+    def load_csv_to_questdb(self, csv_file, table_name) -> LoadToQuestResponse:
         """Load CSV data to QuestDB with upsert logic and insert counting"""
         
         # Initialize response object with default values
@@ -140,7 +140,7 @@ class QuestDBLoader:
             logger.info(f"Date range: {start_date} to {end_date}")
             
             # Check existing records in the specified table
-            existing_records = self.get_existing_records(symbol, start_date, end_date, table_name)
+            existing_records = self._get_existing_records(symbol, start_date, end_date, table_name)
             logger.info(f"Found {len(existing_records)} existing records in date range")
             
             # Generate batch info
@@ -206,7 +206,7 @@ class QuestDBLoader:
                 logger.info(f"New records: {records_new}, Updated records: {records_updated}")
                 
                 # Log load summary
-                self.log_load_summary(load_batch_id, symbol, records_processed, 
+                self._log_load_summary(load_batch_id, symbol, records_processed, 
                                     records_new, records_updated, source_file, "SUCCESS", table_name)
                 
                 return response
@@ -214,7 +214,7 @@ class QuestDBLoader:
             except IngressError as e:
                 response.error_message = f"QuestDB ingress error: {str(e)}"
                 logger.error(response.error_message)
-                self.log_load_summary(load_batch_id, symbol, 0, 0, 0, source_file, "FAILED", table_name)
+                self._log_load_summary(load_batch_id, symbol, 0, 0, 0, source_file, "FAILED", table_name)
                 return response
                 
         except Exception as e:
@@ -222,7 +222,7 @@ class QuestDBLoader:
             logger.error(response.error_message)
             return response
     
-    def log_load_summary(self, load_id, symbol, records_processed, records_new, records_updated, source_file, status, target_table):
+    def _log_load_summary(self, load_id, symbol, records_processed, records_new, records_updated, source_file, status, target_table):
         """Log summary of the load operation"""
         try:
             with Sender('http', self.host, self.port) as sender:
