@@ -161,6 +161,12 @@ def main():
     custom_filename = job_config.get('filename', None)
     save_stats = job_config.get('save_stats', False)
 
+    logger.info(f"Running yfdownloader with config: "
+           f"symbol='{symbol}', interval='{interval}', period='{period}', "
+           f"auto_adjust={auto_adjust}, include_prepost={include_prepost}, "
+           f"output_dir='{output_dir}', custom_filename={custom_filename}, "
+           f"save_stats={save_stats}")
+    
     try:
         # Download stock data
         data, filename = download_stock_data(
@@ -177,6 +183,7 @@ def main():
 
         if data is not None:
             logger.info("SPY OHLCV download job completed successfully")
+            logger.info(f"saved file: {filename}")
         else:
             logger.error("SPY OHLCV download job failed")
             exit(1)

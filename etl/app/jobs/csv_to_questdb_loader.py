@@ -1,3 +1,17 @@
+"""
+finds csv files in data_dir and loads it into table_name table in questdb
+
+Example job_config JSON:
+{
+    "data_dir": "/custom/data/path",     // Directory containing CSV files (default: "/app/data")
+    "symbol_pattern": "AAPL",           // Symbol pattern to match CSV files: '*' for all, or specific symbol like 'SPY' (default: "*")
+    "table_name": "stock_data",         // Target table name in QuestDB (default: "NotDefined") #REQUIRED
+    "only_latest_csv": false,           // Process only the most recent CSV file per symbol (default: true)
+    "questdb_host": "localhost",        // QuestDB host address (default: inherited from global config)
+    "questdb_port": 9009                // QuestDB port number (default: inherited from global config)
+}
+"""
+
 import os
 import json
 import logging
@@ -57,9 +71,22 @@ def main():
     # parse job config if provided
     data_dir = job_config.get('data_dir', '/app/data')
     symbol_pattern = job_config.get('symbol_pattern', '*')  # or specific symbol like 'SPY'
-    table_name = job_config.get('table_name', 'ohlcv_yf')
+    table_name = job_config.get('table_name', 'NotDefined')
     only_latest_csv = job_config.get('only_latest_csv', True)
 
+    questdb_host = job_config.get('questdb_host', questdb_host) #If different
+    questdb_port = job_config.get('questdb_port', questdb_port) #If different
+
+    if table_name == "NotDefined":
+        logger.error("Table Name not defined")
+        exit(1)
+    
+    logger.info(f"Running csv_to_questdb loader with config: "
+           f"data_dir={data_dir}, symbol_pattern='{symbol_pattern}', "
+           f"table_name='{table_name}', only_latest_csv={only_latest_csv}, "
+           f"questdb_host='{questdb_host}', questdb_port={questdb_port}")
+
+    logger.info(f"Running csv_to_questdb loader with ")
     #Re-write variables if passed through job config  
     questdb_host = job_config.get('questdb_host', questdb_host)
     questdb_port = job_config.get('questdb_port', questdb_port)
